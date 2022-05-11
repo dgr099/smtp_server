@@ -47,8 +47,9 @@ void respond(int client_sockfd, char* request) {
 		} else { //si tenía un estado distinto a 1, muestra error de comando no implementado
 			send_data(client_sockfd, reply_code[15]);
 		}
-	} else if (strncmp(request, "mail from", 9) == 0) {
-		if (mail_stat == 2 || mail_stat == 13) {
+	} //mismo proceso para el mail from 
+	else if (strncmp(request, "mail from", 9) == 0) {
+		if (mail_stat == 2) { //comprueba que este log
 			char *pa, *pb;
 			pa = strchr(request, '<');
 			pb = strchr(request, '>');
@@ -59,10 +60,8 @@ void respond(int client_sockfd, char* request) {
 			} else {
 				send_data(client_sockfd, reply_code[15]);
 			}
-		} else if (mail_stat == 12) {
-			send_data(client_sockfd, reply_code[23]);
 		} else {
-			send_data(client_sockfd, "503 Error: send HELO/EHLO first\r\n");
+			send_data(client_sockfd, "503 Error: send HELO first\r\n");
 		}
 	} else if (strncmp(request, "rcpt to", 7) == 0) {
 		if ((mail_stat == 3 || mail_stat == 4) && rcpt_user_num < MAX_RCPT_USR) {
@@ -89,24 +88,10 @@ void respond(int client_sockfd, char* request) {
 	} else if (strncmp(request, "noop", 4) == 0) {
 		send_data(client_sockfd, reply_code[6]);
 	} else if (strncmp(request, "quit", 4) == 0) { //cuando quiere terminar
-		mail_stat = 0; //reiniciamos el mail stat
 		user_quit(); //hacemos un user quit
 		send_data(client_sockfd, reply_code[5]);
-		close(client_sockfd);
-		pthread_exit((void*)1);
-	}
-	//esmpt
-	else if (strncmp(request, "ehlo", 4) == 0) {
-		if (mail_stat == 1) {
-			send_data(client_sockfd, reply_code[24]);
-			mail_stat = 12; //mail stat en 12 para indicar que usa el extendido
-		} else {
-			send_data(client_sockfd, reply_code[15]);
-		}
-	} else if (strncmp(request, "auth login", 10) == 0 || strncmp(request, "auth login plain", 10) == 0 || strncmp(request, "auth=login plain", 10) == 0) {
-		auth(client_sockfd); //pon el mail stat en 13 para indicar que se ha logeado
-	} else {
-		send_data(client_sockfd, reply_code[15]);
+		close(client_sockfd); //closeamos server
+		pthread_exit((void*)1); //cerramos el hilo
 	}
 }
 
@@ -152,42 +137,4 @@ void mail_data(int sockfd) {
 	send_data(sockfd, reply_code[6]);
 }
 
-// decode base64 streams
-char *base64_decode(char *s) { 
-	char *p = s, *e, *r, *_ret;
-	int len = strlen(s);
-	unsigned char i, unit[4];
-
-	e = s + len;
-	len = len / 4 * 3 + 1;
-	r = _ret = (char *) malloc(len);
-
-	while (p < e) {
-		memcpy(unit, p, 4);
-		if (unit[3] == '=')
-			unit[3] = 0;
-		if (unit[2] == '=')
-			unit[2] = 0;
-		p += 4;
-
-		for (i = 0; unit[0] != B64[i] && i < 64; i++)
-			;
-		unit[0] = i == 64 ? 0 : i;
-		for (i = 0; unit[1] != B64[i] && i < 64; i++)
-			;
-		unit[1] = i == 64 ? 0 : i;
-		for (i = 0; unit[2] != B64[i] && i < 64; i++)
-			;
-		unit[2] = i == 64 ? 0 : i;
-		for (i = 0; unit[3] != B64[i] && i < 64; i++)
-			;
-		unit[3] = i == 64 ? 0 : i;
-		*r++ = (unit[0] << 2) | (unit[1] >> 4);
-		*r++ = (unit[1] << 4) | (unit[2] >> 2);
-		*r++ = (unit[2] << 6) | unit[3];
-	}
-	*r = 0;
-
-	return _ret;
-}
 
