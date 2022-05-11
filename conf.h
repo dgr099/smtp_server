@@ -10,7 +10,6 @@
 
 const char dData[] = "data/";
 const char dUInfo[] = "dUInfo";
-const char dUStat[] = "dUStat";
 
 extern int mail_stat;
 extern int rcpt_user_num;

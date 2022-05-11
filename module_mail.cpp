@@ -41,8 +41,8 @@ void respond(int client_sockfd, char* request) {
 	if (strncmp(request, "helo", 4) == 0) {
 		if (mail_stat == 1) {
 			send_data(client_sockfd, reply_code[6]);
-			rcpt_user_num = 0;
-			memset(rcpt_user, 0, sizeof(rcpt_user));
+			rcpt_user_num = 0; //vaciamos el número de receptores
+			memset(rcpt_user, 0, sizeof(rcpt_user)); //x si acaso vaciamos la matriz de receptores
 			mail_stat = 2;
 		} else { //si tenía un estado distinto a 1, muestra error de comando no implementado
 			send_data(client_sockfd, reply_code[15]);
@@ -64,6 +64,7 @@ void respond(int client_sockfd, char* request) {
 			send_data(client_sockfd, "503 Error: send HELO first\r\n");
 		}
 	} else if (strncmp(request, "rcpt to", 7) == 0) {
+		//comprueba que venga de un mail from o de el rcpt to ya que puede haber varios receptores
 		if ((mail_stat == 3 || mail_stat == 4) && rcpt_user_num < MAX_RCPT_USR) {
 			char *pa, *pb;
 			pa = strchr(request, '<');
@@ -88,14 +89,13 @@ void respond(int client_sockfd, char* request) {
 	} else if (strncmp(request, "noop", 4) == 0) {
 		send_data(client_sockfd, reply_code[6]);
 	} else if (strncmp(request, "quit", 4) == 0) { //cuando quiere terminar
-		user_quit(); //hacemos un user quit
 		send_data(client_sockfd, reply_code[5]);
 		close(client_sockfd); //closeamos server
 		pthread_exit((void*)1); //cerramos el hilo
 	}
 }
 
-// send data by socket
+// simplemente un send que imprime la respuesta
 void send_data(int sockfd, const char* data) {
 	if (data != NULL) {
 		send(sockfd, data, strlen(data), 0);
@@ -115,25 +115,53 @@ void mail_data(int sockfd) {
 
 	//mail content store
 	int tm = time(NULL), i;
-	char file[80], tp[20];
+	char file[80], tp[27];
 
 	for (i = 0; i < rcpt_user_num; i++) {
-		strcpy(file, dData);
-		strcat(file, rcpt_user[i]);
+		strcpy(file, dData); //cogemos la dirección del data folder
+		strcat(file, rcpt_user[i]); //concatenamos el usuario de recepción
 		if (access(file,0) == -1) {
 			mkdir(file,0777);
 		}
-		sprintf(tp, "/%d", tm);
-		strcat(file, tp);
+		time_t timer;
+		char buffer[26];
+		struct tm* tm_info;
+		//obtengo la fecha
+		timer = time(NULL);
+		//le pongo el formato adecuado
+		tm_info = localtime(&timer);
+		strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+		puts(buffer);
 
-		FILE* fp = fopen(file, "w+");
+		int i = 0;
+		string aux = "/" + to_string(i);
+		const char *c_aux = aux.c_str();
+		strcat(file, c_aux);
+
+		while( access( file, F_OK ) == 0 ){ //nos vamos desplazando hasta encontrar el nº de correo que toque
+			file[strlen(file)-strlen(c_aux)] = '\0'; //ponemos el /0 para eliminar el ultimo id 
+			i++;
+			aux = "/" + to_string(i);
+			const char *c_aux = aux.c_str();
+			strcat(file, c_aux);
+		}
+		printf("%s\n\n", file);
+		FILE* fp = fopen(file, "w+"); //abrimos el nuevo fichero para escribir el correo
 		if (fp != NULL) {
-			fwrite(buf, 1, strlen(buf), fp);
-			fclose(fp);
+			string header;
+			header += "Mail from: " ;
+			header += from_user;
+			header += "\n";
+			fwrite(header.c_str(),1,header.size(), fp); //escribimos la info
+			fwrite(buf, sizeof(char), strlen(buf), fp); //escribimos la info
+			fwrite(buffer, 1, strlen(buffer), fp); //escribimos la fecha del mensaje
+
+			fclose(fp); //cerramos el fichero
 		} else {
 			cout << "File open error!" << endl;
 		}
 	}
+	//enviamos que todo bien
 	send_data(sockfd, reply_code[6]);
 }
 

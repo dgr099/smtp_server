@@ -27,7 +27,3 @@ using namespace std;
 #include "messages.h"
 
 #endif /* __smtp_COMMON_H */
-
-// Local Variables:
-// mode: C++
-// End:
