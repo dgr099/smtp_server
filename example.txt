@@ -18,14 +18,3 @@ S: 250 OK
 C: QUIT
 S: 221 Bye
 ```
-Well done!
-For more about SMTP, please refer to wiki and it's RFC documents:   
-[wiki: Simple_Mail_Transfer_Protocol](http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)  
-[RFC 5321 – The Simple Mail Transfer Protocol](http://tools.ietf.org/html/rfc5321)  
-
-
-## Lisense
-
-The MIT License (MIT)
-Copyright (C) 2011-2014 Bill Xia (ibillxia@gmail.com) 
-All rights reserved.
